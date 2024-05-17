@@ -55,6 +55,8 @@ long eval(mpc_ast_t* t) {
         x = eval_op(x, op, eval(t-> children[i]));
         i++;
     }
+
+    if(strcmp(op, "-") == 0 && i == 3) { return -x; }
     return x;
 }
 
