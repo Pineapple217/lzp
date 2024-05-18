@@ -9,22 +9,23 @@
 
 static char buffer[2028];
 
-typedef struct {
-    int type;
-    long num;
-    int err;
-} lval;
-
-enum {
+enum lval_type {
     LVAL_NUM,
     LVAL_ERR
 };
 
-enum {
+enum lval_err_type {
     LERR_DEV_ZERO,
     LERR_BAD_OP,
     LERR_BAD_NUM,
 };
+
+typedef struct {
+    enum lval_type type;
+    long num;
+    enum lval_err_type err;
+} lval;
+
 
 lval lval_num(long x) {
     lval v;
@@ -33,7 +34,7 @@ lval lval_num(long x) {
     return v;
 }
 
-lval lval_err(int x) {
+lval lval_err(enum lval_err_type x) {
     lval v;
     v.type = LVAL_ERR;
     v.err = x;
