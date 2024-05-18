@@ -89,8 +89,13 @@ lval eval_op(lval x, char* op, lval y) {
     if (strcmp(op, "+") == 0) { return lval_num(x.num + y.num); }
     if (strcmp(op, "-") == 0) { return lval_num(x.num - y.num); }
     if (strcmp(op, "*") == 0) { return lval_num(x.num * y.num); }
-    if (strcmp(op, "%") == 0) { return lval_num(x.num % y.num); }
     if (strcmp(op, "**") == 0) { return lval_num(powl(x.num, y.num)); }
+    if (strcmp(op, "%") == 0) { 
+        if (y.num == 0) {
+            return lval_err(LERR_DEV_ZERO);
+        }
+        return lval_num(x.num % y.num); 
+    }
     if (strcmp(op, "/") == 0) { 
         if (y.num == 0) {
             return lval_err(LERR_DEV_ZERO);
