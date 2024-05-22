@@ -327,7 +327,16 @@ lval* builtin_join(lval* a) {
     }
 
     lval_del(a);
-    return a;
+    return x;
+}
+
+lval* builtin_len(lval* a) {
+    LASSERT(a, a->count == 1, "Function 'len' passed to many arguments!");
+    LASSERT(a, a->cell[0]->type == LVAL_QEXPR, "Function 'len' passed incorrect type!");
+
+    lval* x = lval_num(a->cell[0]->count);
+    lval_del(a);
+    return x;
 }
 
 lval* builtin(lval* a, char* func) {
@@ -336,6 +345,7 @@ lval* builtin(lval* a, char* func) {
     if (strcmp("tail", func) == 0)  { return builtin_tail(a); }
     if (strcmp("join", func) == 0)  { return builtin_join(a); }
     if (strcmp("eval", func) == 0)  { return builtin_eval(a); }
+    if (strcmp("len", func) == 0)  { return builtin_len(a); }
     else { return builtin_op(a, func); }
     lval_del(a);
     return lval_err("Unkown Function!");
@@ -390,14 +400,14 @@ int main(int argc, char** argv) {
     mpc_parser_t* Lzp = mpc_new("lzp");
 
     mpca_lang(MPCA_LANG_DEFAULT,
-    "                                                                         \
-        number: /-?[0-9]+/ ;                                                  \
-        symbol: \"list\" | \"head\" | \"tail\" | \"join\" | \"eval\"          \
-               | \"min\" | \"max\" | \"**\" | '+' | '-' | '*' | '/' | '%' ;   \
-        sexpr:  '(' <expr>* ')' ;                                             \
-        qexpr:  '{' <expr>* '}' ;                                             \
-        expr:   <number> | <symbol> | <sexpr> | <qexpr> ;                     \
-        lzp:    /^/ <expr>* /$/  ;                                            \
+    "                                                                           \
+        number: /-?[0-9]+/ ;                                                    \
+        symbol: \"list\" | \"head\" | \"tail\" | \"join\" | \"eval\" | \"len\"  \
+               | \"min\" | \"max\" | \"**\" | '+' | '-' | '*' | '/' | '%' ;     \
+        sexpr:  '(' <expr>* ')' ;                                               \
+        qexpr:  '{' <expr>* '}' ;                                               \
+        expr:   <number> | <symbol> | <sexpr> | <qexpr> ;                       \
+        lzp:    /^/ <expr>* /$/  ;                                              \
     ",  Number, Symbol, Sexpr, Qexpr, Expr, Lzp);
 
     puts("Lzp Version 0.0.0.0.6");
