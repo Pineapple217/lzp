@@ -4,8 +4,12 @@
 
 #include "mpc.h"
 
-#define LASSERT(args, cond, err) \
-  if (!(cond)) { lval_del(args); return lval_err(err); }
+#define LASSERT(args, cond, fmt, ...) \
+  if (!(cond)) { \
+    lval* err = lval_err(fmt, ##__VA_ARGS__); \
+    lval_del(args); \
+    return err; \
+  }
 
 #ifdef _WIN32
 #include <string.h>
@@ -45,6 +49,18 @@ enum lval_type {
     LVAL_QEXPR
 };
 
+char* ltype_name(enum lval_type t) {
+  switch(t) {
+    case LVAL_FUN: return "Function";
+    case LVAL_NUM: return "Number";
+    case LVAL_ERR: return "Error";
+    case LVAL_SYM: return "Symbol";
+    case LVAL_SEXPR: return "S-Expression";
+    case LVAL_QEXPR: return "Q-Expression";
+    default: return "Unknown";
+  }
+}
+
 typedef struct lval {
     enum lval_type type;
     union {
@@ -65,11 +81,18 @@ lval* lval_num(long x) {
     return v;
 }
 
-lval* lval_err(char* m) {
+lval* lval_err(char* fmt, ...) {
     lval *v = malloc(sizeof(lval));
     v->type = LVAL_ERR;
-    v->data.err = malloc(strlen(m) + 1);
-    strcpy(v->data.err, m);
+
+    va_list va;
+    va_start(va, fmt);
+
+    v->data.err = malloc(512);
+
+    vsnprintf(v->data.err, 511, fmt, va);
+    v->data.err = realloc(v->data.err, strlen(v->data.err) + 1);
+    va_end(va);
     return v;
 }
 
@@ -296,7 +319,7 @@ lval* lenv_get(lenv* e, lval* k) {
         }
     }
 
-    return lval_err("unbound symbol!");
+    return lval_err("unbound symbol '%s'", k->data.sym);
 }
 
 void lenv_put(lenv* e, lval* k, lval* v) {
@@ -385,8 +408,12 @@ lval* builtin_op(lenv* e, lval* a, char* op) {
 lval *lval_eval(lenv* e, lval *v);
 
 lval* builtin_head(lenv* e, lval* a) {
-    LASSERT(a, a->count == 1, "Function 'head' passed to many arguments!");
-    LASSERT(a, a->cell[0]->type == LVAL_QEXPR, "Function 'head' passed incorrect type!");
+    LASSERT(a, a->count == 1, "Function 'head' passed to many arguments! "
+    "Got %i, Expected %i", a->count, 1);
+    LASSERT(a, a->cell[0]->type == LVAL_QEXPR,
+        "Function 'head' passed incorrect type for argument 0. "
+        "Got %s, Expected %s.",
+        ltype_name(a->cell[0]->type), ltype_name(LVAL_QEXPR));
     LASSERT(a, a->cell[0]->count != 0, "Function 'head' passed {}!");
 
     lval* v = lval_take(a, 0);
@@ -460,6 +487,26 @@ lval* builtin_div(lenv* e, lval* a) {
     return builtin_op(e, a, "/");
 }
 
+lval* builtin_def(lenv* e, lval* a) {
+    LASSERT(a, a->cell[0]->type == LVAL_QEXPR, "Function 'def' passed incorrect type!");
+
+    lval* syms = a->cell[0];
+
+    for (int i = 0; i < syms->count; i++) {
+        LASSERT(a, syms->cell[i]->type == LVAL_SYM, "Function 'def' cannot define non-symbol");
+    }
+
+    LASSERT(a, syms->count == a->count - 1, "Function 'def' cannot define incorrect "
+        "number of values to symbols");
+
+    for (int i = 0; i < syms->count;i++) {
+        lenv_put(e, syms->cell[i], a->cell[i + 1]);
+    }
+
+    lval_del(a);
+    return lval_sexpr();
+}
+
 void lenv_add_builtin(lenv* e, char* name, lbuiltin func) {
     lval* k = lval_sym(name);
     lval* v = lval_fun(func);
@@ -480,6 +527,8 @@ void lenv_add_builtins(lenv* e) {
     lenv_add_builtin(e, "-", builtin_sub);
     lenv_add_builtin(e, "*", builtin_mul);
     lenv_add_builtin(e, "/", builtin_div);
+
+    lenv_add_builtin(e, "def", builtin_def);
 }
 
 lval *lval_eval_sexpr(lenv* e, lval* v);
@@ -545,7 +594,7 @@ int main(int argc, char** argv) {
         lzp:    /^/ <expr>* /$/  ;                          \
     ",  Number, Symbol, Sexpr, Qexpr, Expr, Lzp);
 
-    puts("Lzp Version 0.0.0.0.6");
+    puts("Lzp Version 0.0.0.0.7");
     puts("Press Ctrl+c to Exit\n");
 
     lenv* e = lenv_new();
