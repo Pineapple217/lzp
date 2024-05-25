@@ -547,8 +547,11 @@ lval* builtin_def(lenv* e, lval* a) {
 }
 
 lval* builtin_exit(lenv* e, lval* a) {
+    LASSERT_TYPE("exit", a, 0, LVAL_NUM);
+    LASSERT_NUM("exit", a, 1);
+    int x = a->cell[0]->data.num;
     lval_del(a);
-    exit(0);
+    exit(x);
 }
 
 lval* builtin_state(lenv* e, lval* a) {
