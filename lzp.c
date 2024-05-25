@@ -510,6 +510,22 @@ lval* builtin_div(lenv* e, lval* a) {
     return builtin_op(e, a, "/");
 }
 
+lval* builtin_mod(lenv* e, lval* a) {
+    return builtin_op(e, a, "%");
+}
+
+lval* builtin_pow(lenv* e, lval* a) {
+    return builtin_op(e, a, "**");
+}
+
+lval* builtin_min(lenv* e, lval* a) {
+    return builtin_op(e, a, "min");
+}
+
+lval* builtin_max(lenv* e, lval* a) {
+    return builtin_op(e, a, "max");
+}
+
 lval* builtin_def(lenv* e, lval* a) {
     LASSERT_TYPE("def", a, 0, LVAL_QEXPR);
 
@@ -550,6 +566,10 @@ void lenv_add_builtins(lenv* e) {
     lenv_add_builtin(e, "-", builtin_sub);
     lenv_add_builtin(e, "*", builtin_mul);
     lenv_add_builtin(e, "/", builtin_div);
+    lenv_add_builtin(e, "%", builtin_mod);
+    lenv_add_builtin(e, "**", builtin_pow);
+    lenv_add_builtin(e, "min", builtin_min);
+    lenv_add_builtin(e, "max", builtin_max);
 
     lenv_add_builtin(e, "def", builtin_def);
 }
@@ -610,7 +630,7 @@ int main(int argc, char** argv) {
     mpca_lang(MPCA_LANG_DEFAULT,
     "                                                       \
         number: /-?[0-9]+/ ;                                \
-        symbol : /[a-zA-Z0-9_+\\-*\\/\\\\=<>!&]+/ ;         \
+        symbol : /[a-zA-Z0-9_+\\-*\\/\\\\=<>%!&]+/ ;         \
         sexpr:  '(' <expr>* ')' ;                           \
         qexpr:  '{' <expr>* '}' ;                           \
         expr:   <number> | <symbol> | <sexpr> | <qexpr> ;   \
