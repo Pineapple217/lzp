@@ -266,12 +266,12 @@ lval* lval_read(mpc_ast_t* t) {
     return x;
 }
 
-void lval_print(lval *v);
+void lval_print(lenv* e, lval *v);
 
-void lval_expr_print(lval* v, char open, char close) {
+void lval_expr_print(lenv* e, lval* v, char open, char close) {
     putchar(open);
     for (int i = 0; i < v->count; i++) {
-        lval_print(v->cell[i]);
+        lval_print(e, v->cell[i]);
 
         if (i != (v->count-1)) {
             putchar(' ');
@@ -280,7 +280,9 @@ void lval_expr_print(lval* v, char open, char close) {
     putchar(close);
 }
 
-void lval_print(lval* v) {
+lval* lenv_fetch_symbol(lenv* e, lval* v);
+
+void lval_print(lenv* e, lval* v) {
     switch (v->type) {
         case LVAL_NUM:
             printf("%li", v->data.num); break;
@@ -289,16 +291,17 @@ void lval_print(lval* v) {
         case LVAL_SYM:
             printf("%s", v->data.sym); break;
         case LVAL_FUN:
-            printf("<function>"); break;
+            lval* x = lenv_fetch_symbol(e, v);
+            printf("<%s>", x->data.sym); break;
         case LVAL_SEXPR:
-            lval_expr_print(v, '(', ')'); break;
+            lval_expr_print(e, v, '(', ')'); break;
         case LVAL_QEXPR:
-            lval_expr_print(v, '{', '}'); break;
+            lval_expr_print(e, v, '{', '}'); break;
     }
 }
 
-void lval_println(lval* v) {
-    lval_print(v);
+void lval_println(lenv* e, lval* v) {
+    lval_print(e, v);
     putchar('\n');
 }
 
@@ -334,6 +337,16 @@ lval* lenv_get(lenv* e, lval* k) {
     }
 
     return lval_err("unbound symbol '%s'", k->data.sym);
+}
+
+lval* lenv_fetch_symbol(lenv* e, lval* v) {
+    for (int i = 0; i < e->count; i++) {
+        if (e->vals[i]->data.fun == v->data.fun) {
+            return lval_sym(e->syms[i]);
+        }
+    }
+
+    return lval_err("functions symbol not found");
 }
 
 void lenv_put(lenv* e, lval* k, lval* v) {
@@ -617,7 +630,7 @@ int main(int argc, char** argv) {
         mpc_result_t r;
         if (mpc_parse("<stdin>", input, Lzp, &r)) {
             lval* x = lval_eval(e, lval_read(r.output));
-            lval_println(x);
+            lval_println(e, x);
             lval_del(x);
             mpc_ast_delete(r.output);
         } else {
