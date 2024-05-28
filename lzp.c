@@ -848,6 +848,66 @@ lval* builtin_ord(lenv* e, lval* a, char* op) {
     return lval_num(r);
 }
 
+lval* builtin_log(lenv* e, lval* a, char* op) {
+    for (int i = 0; i < a->count; i++) {
+        if (a->cell[i]->type != LVAL_NUM) {
+            lval_del(a);
+            return lval_err("Cannot operate on non-number!");
+        }
+    }
+    
+    lval* x = lval_pop(a, 0);
+
+    if (a->count == 0 && strcmp(op, "!") == 0) {
+        if (x->data.num == 0) {
+            x->data.num = 1;
+        } else {
+            x->data.num = 0;
+        }
+    }
+
+    while (a->count > 0) {
+        lval* y = lval_pop(a, 0);
+        if (strcmp(op, "||") == 0) {
+            if (x->data.num || y->data.num) {
+                x->data.num = 1;
+            } else {
+                x->data.num = 0;
+            }
+        }
+
+        if (strcmp(op, "&&") == 0) {
+            if (x->data.num && y->data.num) {
+                x->data.num = 1;
+            } else {
+                x->data.num = 0;
+            }
+        }
+        lval_del(y);
+    }
+
+    lval_del(a);
+    if (x->data.num) {
+        x->data.num = 1;
+    } else {
+        x->data.num = 0;
+    }
+    return x;
+}
+
+lval* builtin_not(lenv* e, lval* a) {
+    LASSERT_NUM("!", a, 1);
+    return builtin_log(e, a, "!");
+}
+
+lval* builtin_or(lenv* e, lval* a) {
+    return builtin_log(e, a, "||");
+}
+
+lval* builtin_and(lenv* e, lval* a) {
+    return builtin_log(e, a, "&&");
+}
+
 lval* builtin_gt(lenv* e, lval* a) {
     return builtin_ord(e, a, ">");
 }
@@ -901,6 +961,9 @@ void lenv_add_builtins(lenv* e) {
     lenv_add_builtin(e, "==", builtin_eq);
     lenv_add_builtin(e, "!=", builtin_ne);
     lenv_add_builtin(e, "if", builtin_if);
+    lenv_add_builtin(e, "!", builtin_not);
+    lenv_add_builtin(e, "||", builtin_or);
+    lenv_add_builtin(e, "&&", builtin_and);
 }
 
 lval *lval_eval_sexpr(lenv* e, lval* v);
@@ -963,7 +1026,7 @@ int main(int argc, char** argv) {
     mpca_lang(MPCA_LANG_DEFAULT,
     "                                                       \
         number: /-?[0-9]+/ ;                                \
-        symbol : /[a-zA-Z0-9_+\\-*\\/\\\\=<>%!&]+/ ;         \
+        symbol : /[a-zA-Z0-9_+\\-*\\/\\\\=<>%!&\\|]+/ ;         \
         sexpr:  '(' <expr>* ')' ;                           \
         qexpr:  '{' <expr>* '}' ;                           \
         expr:   <number> | <symbol> | <sexpr> | <qexpr> ;   \
