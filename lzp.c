@@ -848,28 +848,6 @@ lval* builtin_ord(lenv* e, lval* a, char* op) {
     return lval_num(r);
 }
 
-lval* builtin_log(lenv* e, lval* a, char* op) {
-    LASSERT_NUM(op, a, 2);
-    LASSERT_TYPE(op, a, 0, LVAL_NUM);
-    LASSERT_TYPE(op, a, 1, LVAL_NUM);
-
-    int r;
-    if (strcmp(op, ">") == 0) {
-        r = (a->cell[0]->data.num > a->cell[1]->data.num);
-    }
-    if (strcmp(op, "<") == 0) {
-        r = (a->cell[0]->data.num < a->cell[1]->data.num);
-    }
-    if (strcmp(op, ">=") == 0) {
-        r = (a->cell[0]->data.num >= a->cell[1]->data.num);
-    }
-    if (strcmp(op, "<=") == 0) {
-        r = (a->cell[0]->data.num <= a->cell[1]->data.num);
-    }
-    lval_del(a);
-    return lval_num(r);
-}
-
 lval* builtin_gt(lenv* e, lval* a) {
     return builtin_ord(e, a, ">");
 }
