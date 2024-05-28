@@ -698,7 +698,7 @@ lval* builtin_state(lenv* e, lval* a) {
     return lval_sexpr();
 }
 
-lval* buildtin_lambda(lenv* e, lval* a) {
+lval* builtin_lambda(lenv* e, lval* a) {
     LASSERT_NUM("\\", a, 2);
     LASSERT_TYPE("\\", a, 0, LVAL_QEXPR);
     LASSERT_TYPE("\\", a, 1, LVAL_QEXPR);
@@ -888,7 +888,7 @@ void lenv_add_builtins(lenv* e) {
     lenv_add_builtin(e, "max", builtin_max);
 
     lenv_add_builtin(e, "def", builtin_def);
-    lenv_add_builtin(e, "\\", buildtin_lambda);
+    lenv_add_builtin(e, "\\", builtin_lambda);
     lenv_add_builtin(e, "=", builtin_put);
 
     lenv_add_builtin(e, "exit", builtin_exit);
