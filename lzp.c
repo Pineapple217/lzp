@@ -639,18 +639,36 @@ lval* builtin_eval(lenv* e, lval* a) {
 }
 
 lval* builtin_join(lenv* e,lval* a) {
-    for (int i = 0; i < a->count; i++) {
-        LASSERT_TYPE("join", a, i, LVAL_QEXPR);
+    if (a->cell[0]->type == LVAL_QEXPR) {
+        for (int i = 0; i < a->count; i++) {
+            LASSERT_TYPE("join", a, i, LVAL_QEXPR);
+        }
+
+        lval *x = lval_pop(a, 0);
+
+        while (a->count) {
+            x = lval_join(x, lval_pop(a, 0));
+        }
+        lval_del(a);
+        return x;
     }
+    if (a->cell[0]->type == LVAL_STR) {
+        for (int i = 0; i < a->count; i++) {
+            LASSERT_TYPE("join", a, i, LVAL_STR);
+        }
 
-    lval *x = lval_pop(a, 0);
+        lval *x = lval_pop(a, 0);
 
-    while (a->count) {
-        x = lval_join(x, lval_pop(a, 0));
+        while (a->count) {
+            lval* y = lval_pop(a, 0);
+            x->data.str = strcat(x->data.str, y->data.str);
+            lval_del(y);
+        }
+        lval_del(a);
+        return x;
     }
-
-    lval_del(a);
-    return x;
+    return lval_err("Function 'join' passed incorrect type. "
+        "Got %s, Expected Q-Expression or String.", ltype_name(a->cell[0]->type));
 }
 
 lval* builtin_len(lenv* e,lval* a) {
