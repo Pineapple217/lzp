@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include "mpc.h"
+#include "prelude.h"
 
 #define LASSERT(args, cond, fmt, ...) \
   if (!(cond)) { \
@@ -1223,8 +1224,20 @@ int main(int argc, char** argv) {
     lenv* e = lenv_new();
     lenv_add_builtins(e);
 
+    char* string_p = malloc(prelude_lzp_len - 1);
+    memcpy(string_p, prelude_lzp, prelude_lzp_len);
+    string_p[prelude_lzp_len] = '\0';
+
+
+    lval* prelude = lval_sexpr();
+    lval_add(prelude, lval_str(string_p));
+    free(string_p);
+
+    builtin_read(e, prelude);
+
+
     if (argc == 1) {
-        puts("Lzp Version 0.0.0.0.7");
+        puts("Lzp Version 0.1.0");
         puts("Press Ctrl+c to Exit\n");
         while(1) {
             char* input = readline("lzp> ");
