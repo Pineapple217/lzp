@@ -114,3 +114,10 @@
     {if (== x (fst (fst cs))) {snd (fst cs)} {
       unpack case (join (list x) (tail cs))}}
 })
+
+; Assert
+(fun {assert x err} {
+  if (! x)
+    {error (join "asserting failed: " err)}
+    {nil}
+})

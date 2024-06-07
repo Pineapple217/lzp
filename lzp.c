@@ -1241,9 +1241,9 @@ int main(int argc, char** argv) {
     lenv_add_builtins(e);
 
     if (enable_prelude) {
-        char* string_p = malloc(prelude_lzp_len);
+        char* string_p = malloc(prelude_lzp_len + 1);
         memcpy(string_p, prelude_lzp, prelude_lzp_len);
-        string_p[prelude_lzp_len + 1] = '\0';
+        string_p[prelude_lzp_len] = '\0';
 
 
         lval* prelude = lval_sexpr();
