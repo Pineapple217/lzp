@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <getopt.h>
 #include <math.h>
 
 #include "mpc.h"
@@ -1220,23 +1222,39 @@ int main(int argc, char** argv) {
         lzp:    /^/ <expr>* /$/  ;                          \
     ",  Number, Symbol, String, Comment, Sexpr, Qexpr, Expr, Lzp);
 
+    bool enable_prelude = true;
+    bool shell = true;
+
+    int opt; 
+    while((opt = getopt(argc, argv, "n")) != -1) {  
+        switch(opt) {  
+            case 'n': enable_prelude = false; break;
+        }  
+    }  
+
+    if (optind < argc) {
+        shell = false;
+    }
+
 
     lenv* e = lenv_new();
     lenv_add_builtins(e);
 
-    char* string_p = malloc(prelude_lzp_len - 1);
-    memcpy(string_p, prelude_lzp, prelude_lzp_len);
-    string_p[prelude_lzp_len] = '\0';
+    if (enable_prelude) {
+        char* string_p = malloc(prelude_lzp_len - 1);
+        memcpy(string_p, prelude_lzp, prelude_lzp_len);
+        string_p[prelude_lzp_len] = '\0';
 
 
-    lval* prelude = lval_sexpr();
-    lval_add(prelude, lval_str(string_p));
-    free(string_p);
+        lval* prelude = lval_sexpr();
+        lval_add(prelude, lval_str(string_p));
+        free(string_p);
 
-    builtin_read(e, prelude);
+        builtin_read(e, prelude);
+    }
 
 
-    if (argc == 1) {
+    if (shell) {
         puts("Lzp Version 0.1.0");
         puts("Press Ctrl+c to Exit\n");
         while(1) {
@@ -1258,8 +1276,8 @@ int main(int argc, char** argv) {
         }
     }
 
-    if (argc >= 2) {
-        for (int i = 1; i < argc; i++) {
+    if (!shell) {
+        for (int i = optind; i < argc; i++) {
             lval* args = lval_add(lval_sexpr(), lval_str(argv[i]));
 
             lval* x = builtin_load(e, args);
