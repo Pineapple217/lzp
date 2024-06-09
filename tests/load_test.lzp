@@ -1,0 +1,1 @@
+(show "this is printed from inside \"load_test.lzp\"")

@@ -12,8 +12,6 @@
   def (head f) (\ (tail f) b)
 }))
 
-(def {fun} (\ {f b} { def (head f) (\ (tail f) b) }))
-
 ; Unpack List for Function
 (fun {unpack f l} {
   eval (join (list f) l)

@@ -4,3 +4,6 @@ build:
 run: 
 	@make --no-print-directory build
 	@./lzp
+test:
+	@make --no-print-directory build
+	@./lzp -n ./tests/builtin.lzp
