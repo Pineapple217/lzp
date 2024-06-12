@@ -46,6 +46,10 @@
 (if (== (len {+ 3 - / head}) 5) {} {exit 402})
 (if (== (len {head {+ 3 - 4}}) 2) {} {exit 403})
 (if (== (len {}) 0) {} {exit 404})
+(if (== (len "") 0) {} {exit 405})
+(if (== (len "teehee") 6) {} {exit 406})
+(if (== (len "aa") 2) {} {exit 407})
+(if (== (len "b") 1) {} {exit 408})
 
 (join)
 (join + 32 ())

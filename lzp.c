@@ -706,11 +706,18 @@ lval* builtin_join(lenv* e,lval* a) {
 
 lval* builtin_len(lenv* e,lval* a) {
     LASSERT_NUM("len", a, 1);
-    LASSERT_TYPE("len", a, 0, LVAL_QEXPR);
-
-    lval* x = lval_num(a->cell[0]->count);
-    lval_del(a);
-    return x;
+    if (a->cell[0]->type == LVAL_QEXPR) {
+        lval* x = lval_num(a->cell[0]->count);
+        lval_del(a);
+        return x;
+    }
+    if (a->cell[0]->type == LVAL_STR) {
+        lval* x = lval_num(strlen(a->cell[0]->data.str));
+        lval_del(a);
+        return x;
+    }
+    return lval_err("Function 'len' passed incorrect type. "
+        "Got %s, Expected Q-Expression or String.", ltype_name(a->cell[0]->type));
 }
 
 lval* builtin_add(lenv* e, lval* a) {
