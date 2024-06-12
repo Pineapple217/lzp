@@ -633,12 +633,28 @@ lval* builtin_head(lenv* e, lval* a) {
 
 lval* builtin_tail(lenv* e, lval *a) {
     LASSERT_NUM("tail", a, 1);
-    LASSERT_TYPE("tail", a, 0, LVAL_QEXPR);
-    LASSERT_NOT_EMPTY("tail", a, 0);
+    if (a->cell[0]->type == LVAL_QEXPR) {
+        LASSERT_NOT_EMPTY("tail", a, 0);
 
-    lval *v = lval_take(a, 0);
-    lval_del(lval_pop(v, 0));
-    return v;
+        lval *v = lval_take(a, 0);
+        lval_del(lval_pop(v, 0));
+        return v;
+    }
+    if (a->cell[0]->type == LVAL_STR) {
+        if (strlen(a->cell[0]->data.str) == 0) {
+            return lval_err("Can not take 'tail' of empty string");
+        }
+        if (strlen(a->cell[0]->data.str) == 1) {
+            return lval_str("");
+        }
+        char* s = malloc(strlen(a->cell[0]->data.str));
+        strcpy(s, a->cell[0]->data.str + 1);
+        lval* v = lval_str(s);
+        free(s);
+        return v;
+    }
+        return lval_err("Function 'tail' passed incorrect type. "
+    "Got %s, Expected Q-Expression or String.", ltype_name(a->cell[0]->type));
 }
 
 lval* builtin_list(lenv* e, lval* a) {

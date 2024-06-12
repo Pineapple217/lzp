@@ -31,10 +31,13 @@
 (tail)
 (tail 3)
 (tail {})
+(tail "")
 (tail 32 32)
 (if (== (tail {32 2 3 4}) {2 3 4}) {} {exit 301})
 (if (== (tail {+ 3 - /}) {3 - /}) {} {exit 302})
 (if (== (tail {head {+ 3 - 4}}) {{+ 3 - 4}}) {} {exit 303})
+(if (== (tail "abc") "bc") {} {exit 304})
+(if (== (tail "q") "") {} {exit 305})
 
 (len)
 (len 3)
