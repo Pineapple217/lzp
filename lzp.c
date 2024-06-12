@@ -607,14 +607,28 @@ lval *lval_eval(lenv* e, lval *v);
 
 lval* builtin_head(lenv* e, lval* a) {
     LASSERT_NUM("head", a, 1);
-    LASSERT_TYPE("head", a, 0, LVAL_QEXPR);
-    LASSERT_NOT_EMPTY("head", a, 0);
+    if (a->cell[0]->type == LVAL_QEXPR) {
+        LASSERT_NOT_EMPTY("head", a, 0);
 
-    lval* v = lval_take(a, 0);
-    while (v->count > 1) {
-        lval_del(lval_pop(v, 1));
+        lval* v = lval_take(a, 0);
+        while (v->count > 1) {
+            lval_del(lval_pop(v, 1));
+        }
+        return v;
     }
-    return v;
+    if (a->cell[0]->type == LVAL_STR) {
+        if (strlen(a->cell[0]->data.str) == 0) {
+            return lval_err("Can not take 'head' of empty string");
+        }
+        char* s = malloc(2);
+        s[0] = a->cell[0]->data.str[0];
+        s[1] = '\0';
+        lval* v = lval_str(s);
+        free(s);
+        return v;
+    }
+    return lval_err("Function 'head' passed incorrect type. "
+        "Got %s, Expected Q-Expression or String.", ltype_name(a->cell[0]->type));
 }
 
 lval* builtin_tail(lenv* e, lval *a) {

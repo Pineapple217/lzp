@@ -20,10 +20,13 @@
 (head)
 (head 3)
 (head {})
+(head "")
 (head 32 32)
 (if (== (head {32 2 3 4}) {32}) {} {exit 201})
 (if (== (head {+ 3 - 4}) {+}) {} {exit 202})
 (if (== (head {head {+ 3 - 4}}) {head}) {} {exit 203})
+(if (== (head "abc") "a") {} {exit 204})
+(if (== (head "q") "q") {} {exit 205})
 
 (tail)
 (tail 3)
