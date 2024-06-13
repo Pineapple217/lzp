@@ -1,6 +1,6 @@
 build:
 	xxd -i prelude.lzp > prelude.h
-	gcc lzp.c mpc.c -o lzp
+	gcc -O3 lzp.c mpc.c -o lzp -Wl,--stack,16777216
 run: 
 	@make --no-print-directory build
 	@./lzp

@@ -1,0 +1,18 @@
+; Calc pi using Leibniz formula
+(fun {pi n t s} {
+    if (== n 0)
+        {0}
+        {+ 
+            (/ 
+                (* s 4.0)
+                (+ (* 2.0 t) 1.0)
+            )
+            (pi (- n 1) (+ t 1) (- s))
+        }
+})
+
+; Accuracy is bad because low iter count
+; Make sure to compile with -Wl,--stack,16777216
+; to increase call stack size (prevents segmentation faults)
+(show "Calculating...")
+(print (pi 10000 0 1))
