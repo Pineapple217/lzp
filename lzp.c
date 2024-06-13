@@ -55,6 +55,7 @@ typedef struct lval lval;
 typedef struct lenv lenv;
 
 mpc_parser_t* Number;
+mpc_parser_t* Float;
 mpc_parser_t* Symbol;
 mpc_parser_t* String;
 mpc_parser_t* Comment;
@@ -67,6 +68,7 @@ typedef lval*(*lbuiltin)(lenv*, lval*);
 
 enum lval_type {
     LVAL_NUM,
+    LVAL_FLT,
     LVAL_ERR,
     LVAL_SYM,
     LVAL_STR,
@@ -79,6 +81,7 @@ char* ltype_name(enum lval_type t) {
   switch(t) {
     case LVAL_FUN: return "Function";
     case LVAL_NUM: return "Number";
+    case LVAL_FLT: return "Float";
     case LVAL_ERR: return "Error";
     case LVAL_SYM: return "Symbol";
     case LVAL_STR: return "String";
@@ -92,6 +95,7 @@ typedef struct lval {
     enum lval_type type;
     union {
         long num;
+        double flt;
         char* err;
         char* sym;
         char* str;
@@ -109,6 +113,13 @@ lval* lval_num(long x) {
     lval *v = malloc(sizeof(lval));
     v->type = LVAL_NUM;
     v->data.num = x;
+    return v;
+}
+
+lval* lval_flt(double x) {
+    lval *v = malloc(sizeof(lval));
+    v->type = LVAL_FLT;
+    v->data.flt = x;
     return v;
 }
 
@@ -186,6 +197,7 @@ void lenv_del(lenv* e);
 void lval_del(lval* v) {
     switch (v->type) {
         case LVAL_NUM: break;
+        case LVAL_FLT: break;
         case LVAL_FUN:
             if (!v->data.builtin) {
                 lenv_del(v->env);
@@ -231,6 +243,8 @@ lval* lval_copy(lval* v) {
             break;
         case LVAL_NUM:
             x->data.num = v->data.num; break;
+        case LVAL_FLT:
+            x->data.flt = v->data.flt; break;
 
         case LVAL_ERR:
             x->data.err = malloc(strlen(v->data.err) + 1);
@@ -297,6 +311,8 @@ int lval_eq(lval* x, lval* y) {
     switch (x->type) {
         case LVAL_NUM:
             return (x->data.num == y->data.num);
+        case LVAL_FLT:
+            return (fabs(x->data.flt - y->data.flt) < 0.000000000000001);
         case LVAL_ERR:
             return (strcmp(x->data.err, y->data.err) == 0);
         case LVAL_SYM:
@@ -337,6 +353,15 @@ lval* lval_read_num(mpc_ast_t* t) {
     return lval_num(x);
 }
 
+lval* lval_read_flt(mpc_ast_t* t) {
+    errno = 0;
+    double x = strtod(t->contents, NULL);
+    if (errno == ERANGE) {
+        return lval_err("invalid float");
+    }
+    return lval_flt(x);
+}
+
 lval* lval_read_str(mpc_ast_t* t) {
     t->contents[strlen(t->contents) - 1] = '\0';
 
@@ -353,6 +378,9 @@ lval* lval_read_str(mpc_ast_t* t) {
 lval* lval_read(mpc_ast_t* t) {
     if (strstr(t->tag, "number")) {
         return lval_read_num(t);
+    }
+    if (strstr(t->tag, "float")) {
+        return lval_read_flt(t);
     }
     if (strstr(t->tag, "symbol")) {
         return lval_sym(t->contents);
@@ -413,6 +441,8 @@ void lval_print(lenv* e, lval* v) {
     switch (v->type) {
         case LVAL_NUM:
             printf("%li", v->data.num); break;
+        case LVAL_FLT:
+            printf("%.15g", v->data.flt); break;
         case LVAL_ERR:
             printf("Error: %s", v->data.err); break;
         case LVAL_SYM:
@@ -540,40 +570,86 @@ void lenv_put(lenv* e, lval* k, lval* v) {
 
 lval* builtin_op(lenv* e, lval* a, char* op) {
     for (int i = 0; i < a->count; i++) {
-        if (a->cell[i]->type != LVAL_NUM) {
+        if (a->cell[i]->type != LVAL_NUM && a->cell[i]->type != LVAL_FLT) {
             lval_del(a);
             return lval_err("Cannot operate on non-number!");
         }
+
     }
 
     lval *x = lval_pop(a, 0);
 
     if ((strcmp(op, "-") == 0) && a->count == 0) {
-        x->data.num = -x->data.num;
+        if (x->type == LVAL_NUM) {
+            x->data.num = -x->data.num;
+        }
+        else if (x->type == LVAL_FLT) {
+            x->data.flt = -x->data.flt;
+        }
     }
 
     while (a->count > 0) {
         lval *y = lval_pop(a, 0);
 
         if (strcmp(op, "+") == 0) {
-            x->data.num += y->data.num;
+            if (x->type == LVAL_NUM && y->type == LVAL_NUM) {
+                x->data.num += y->data.num;
+            } else if (x->type == LVAL_FLT && y->type == LVAL_FLT) {
+                x->data.flt += y->data.flt;
+            } else if (x->type == LVAL_FLT) {
+                x->data.flt += (double)y->data.num;
+            } else {
+                x->type = LVAL_FLT;
+                x->data.flt = (double)x->data.num + y->data.flt;
+            }
         }
         if (strcmp(op, "-") == 0) {
-            x->data.num -= y->data.num;
+            if (x->type == LVAL_NUM && y->type == LVAL_NUM) {
+                x->data.num -= y->data.num;
+            } else if (x->type == LVAL_FLT && y->type == LVAL_FLT) {
+                x->data.flt -= y->data.flt;
+            } else if (x->type == LVAL_FLT) {
+                x->data.flt -= (double)y->data.num;
+            } else {
+                x->type = LVAL_FLT;
+                x->data.flt = (double)x->data.num - y->data.flt;
+            }
         }
         if (strcmp(op, "*") == 0) {
-            x->data.num *= y->data.num;
+            if (x->type == LVAL_NUM && y->type == LVAL_NUM) {
+                x->data.num *= y->data.num;
+            } else if (x->type == LVAL_FLT && y->type == LVAL_FLT) {
+                x->data.flt *= y->data.flt;
+            } else if (x->type == LVAL_FLT) {
+                x->data.flt *= (double)y->data.num;
+            } else {
+                x->type = LVAL_FLT;
+                x->data.flt = (double)x->data.num * y->data.flt;
+            }
         }
         if (strcmp(op, "/") == 0) {
-            if(y->data.num == 0) {
+            if ((y->type == LVAL_NUM && y->data.num == 0)
+                || (y->type == LVAL_FLT && y->data.flt == 0)) {
                 lval_del(x);
                 lval_del(y);
                 x = lval_err("Division by Zero!");
                 break;
             }
-            x->data.num /= y->data.num;
+            if (x->type == LVAL_NUM && y->type == LVAL_NUM) {
+                x->data.num /= y->data.num;
+            } else if (x->type == LVAL_FLT && y->type == LVAL_FLT) {
+                x->data.flt /= y->data.flt;
+            } else if (x->type == LVAL_FLT) {
+                x->data.flt /= (double)y->data.num;
+            } else {
+                x->type = LVAL_FLT;
+                x->data.flt = (double)x->data.num / y->data.flt;
+            }
         }
         if (strcmp(op, "%") == 0) {
+            if (x->type == LVAL_FLT || y->type == LVAL_FLT) {
+                return lval_err("Cannot operate on floats!");
+            }
             if(y->data.num == 0) {
                 lval_del(x);
                 lval_del(y);
@@ -583,16 +659,57 @@ lval* builtin_op(lenv* e, lval* a, char* op) {
             x->data.num %= y->data.num;
         }
         if (strcmp(op, "**") == 0) {
-            x->data.num = powl(x->data.num, y->data.num);
+            if (x->type == LVAL_NUM && y->type == LVAL_NUM) {
+                x->data.num = powl(x->data.num, y->data.num);
+            } else if (x->type == LVAL_FLT && y->type == LVAL_FLT) {
+                x->data.flt = pow(x->data.flt, y->data.flt);
+            } else if (x->type == LVAL_FLT) {
+                x->data.flt = pow(x->data.flt, (double)y->data.num);
+            } else {
+                x->type = LVAL_FLT;
+                x->data.flt = pow((double)x->data.num, y->data.flt);
+            }
         }
         if (strcmp(op, "min") == 0) {
-            if (x->data.num > y->data.num) {
-                x->data.num = y->data.num;
+            if (x->type == LVAL_NUM && y->type == LVAL_NUM) {
+                if (x->data.num > y->data.num) {
+                    x->data.num = y->data.num;
+                }
+            } else if (x->type == LVAL_FLT && y->type == LVAL_FLT) {
+                if (x->data.flt > y->data.flt) {
+                    x->data.flt = y->data.flt;
+                }
+            } else if (x->type == LVAL_FLT) {
+                if (x->data.flt > y->data.num) {
+                    x->type = LVAL_NUM;
+                    x->data.num = y->data.num;
+                }
+            } else {
+                if (x->data.num > y->data.flt) {
+                    x->type = LVAL_FLT;
+                    x->data.flt = y->data.flt;
+                }
             }
         }
         if (strcmp(op, "max") == 0) {
-            if (x->data.num < y->data.num) {
-                x->data.num = y->data.num;
+            if (x->type == LVAL_NUM && y->type == LVAL_NUM) {
+                if (x->data.num < y->data.num) {
+                    x->data.num = y->data.num;
+                }
+            } else if (x->type == LVAL_FLT && y->type == LVAL_FLT) {
+                if (x->data.flt < y->data.flt) {
+                    x->data.flt = y->data.flt;
+                }
+            } else if (x->type == LVAL_FLT) {
+                if (x->data.flt < y->data.num) {
+                    x->type = LVAL_NUM;
+                    x->data.num = y->data.num;
+                }
+            } else {
+                if (x->data.num < y->data.flt) {
+                    x->type = LVAL_FLT;
+                    x->data.flt = y->data.flt;
+                }
             }
         }
 
@@ -1009,21 +1126,55 @@ lval* builtin_if(lenv* e, lval* a) {
 
 lval* builtin_ord(lenv* e, lval* a, char* op) {
     LASSERT_NUM(op, a, 2);
-    LASSERT_TYPE(op, a, 0, LVAL_NUM);
-    LASSERT_TYPE(op, a, 1, LVAL_NUM);
+    if ((a->cell[0]->type != LVAL_NUM && a->cell[0]->type != LVAL_FLT) ||
+        (a->cell[1]->type != LVAL_NUM && a->cell[1]->type != LVAL_FLT)) {
+        return lval_err("Cannot operate on non-number!");
+    }
 
     int r;
     if (strcmp(op, ">") == 0) {
-        r = (a->cell[0]->data.num > a->cell[1]->data.num);
+        if (a->cell[0]->type == LVAL_NUM && a->cell[1]->type == LVAL_NUM) {
+            r = (a->cell[0]->data.num > a->cell[1]->data.num);
+        } else if (a->cell[0]->type == LVAL_FLT && a->cell[1]->type == LVAL_FLT) {
+            r = (a->cell[0]->data.flt > a->cell[1]->data.flt);
+        } else if (a->cell[0]->type == LVAL_FLT) {
+            r = (a->cell[0]->data.flt > a->cell[1]->data.num);
+        } else {
+            r = (a->cell[0]->data.num > a->cell[1]->data.flt);
+        }
     }
     if (strcmp(op, "<") == 0) {
-        r = (a->cell[0]->data.num < a->cell[1]->data.num);
+        if (a->cell[0]->type == LVAL_NUM && a->cell[1]->type == LVAL_NUM) {
+            r = (a->cell[0]->data.num < a->cell[1]->data.num);
+        } else if (a->cell[0]->type == LVAL_FLT && a->cell[1]->type == LVAL_FLT) {
+            r = (a->cell[0]->data.flt < a->cell[1]->data.flt);
+        } else if (a->cell[0]->type == LVAL_FLT) {
+            r = (a->cell[0]->data.flt < a->cell[1]->data.num);
+        } else {
+            r = (a->cell[0]->data.num < a->cell[1]->data.flt);
+        }
     }
     if (strcmp(op, ">=") == 0) {
-        r = (a->cell[0]->data.num >= a->cell[1]->data.num);
+        if (a->cell[0]->type == LVAL_NUM && a->cell[1]->type == LVAL_NUM) {
+            r = (a->cell[0]->data.num >= a->cell[1]->data.num);
+        } else if (a->cell[0]->type == LVAL_FLT && a->cell[1]->type == LVAL_FLT) {
+            r = (a->cell[0]->data.flt >= a->cell[1]->data.flt);
+        } else if (a->cell[0]->type == LVAL_FLT) {
+            r = (a->cell[0]->data.flt >= a->cell[1]->data.num);
+        } else {
+            r = (a->cell[0]->data.num >= a->cell[1]->data.flt);
+        }
     }
     if (strcmp(op, "<=") == 0) {
-        r = (a->cell[0]->data.num <= a->cell[1]->data.num);
+        if (a->cell[0]->type == LVAL_NUM && a->cell[1]->type == LVAL_NUM) {
+            r = (a->cell[0]->data.num <= a->cell[1]->data.num);
+        } else if (a->cell[0]->type == LVAL_FLT && a->cell[1]->type == LVAL_FLT) {
+            r = (a->cell[0]->data.flt <= a->cell[1]->data.flt);
+        } else if (a->cell[0]->type == LVAL_FLT) {
+            r = (a->cell[0]->data.flt <= a->cell[1]->data.num);
+        } else {
+            r = (a->cell[0]->data.num <= a->cell[2]->data.flt);
+        }
     }
     lval_del(a);
     return lval_num(r);
@@ -1239,6 +1390,7 @@ lval* lval_eval_sexpr(lenv* e, lval* v) {
 
 int main(int argc, char** argv) {
     Number = mpc_new("number");
+    Float = mpc_new("float");
     Symbol = mpc_new("symbol");
     String = mpc_new("string");
     Comment = mpc_new("comment");
@@ -1250,14 +1402,15 @@ int main(int argc, char** argv) {
     mpca_lang(MPCA_LANG_DEFAULT,
         "                                                            \
         number: /-?[0-9]+/ ;                                         \
+        float: /-?[0-9]*[.][0-9]+/ ;                                 \
         symbol : /[a-zA-Z0-9_+\\-*\\/\\\\=<>%!&\\|]+/ ;              \
         string: /\"(\\\\.|[^\"])*\"/ ;                               \
         comment : /;[^\\r\\n]*/ ;                                    \
         sexpr:  '(' <expr>* ')' ;                                    \
         qexpr:  '{' <expr>* '}' ;                                    \
-        expr:   <number> | <symbol> | <string> | <comment> | <sexpr> | <qexpr> ; \
+        expr:   <float>| <number> | <symbol> | <string> | <comment> | <sexpr> | <qexpr> ; \
         lzp:    /^/ <expr>* /$/  ;                          \
-    ",  Number, Symbol, String, Comment, Sexpr, Qexpr, Expr, Lzp);
+    ", Number, Float, Symbol, String, Comment, Sexpr, Qexpr, Expr, Lzp);
 
     bool enable_prelude = true;
     bool shell = true;
@@ -1328,6 +1481,6 @@ int main(int argc, char** argv) {
 
     lenv_del(e);
 
-    mpc_cleanup(8, Number, Symbol, String, Comment, Sexpr, Qexpr, Expr, Lzp);
+    mpc_cleanup(9, Number, Float, Symbol, String, Comment, Sexpr, Qexpr, Expr, Lzp);
     return 0;
 }
