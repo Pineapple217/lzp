@@ -1,0 +1,14 @@
+(fun {fib n}
+    {if (<= n 1)
+        {n} 
+        {+ (fib (- n 1)) (fib (- n 2))}
+    }
+)
+
+(fun {cal s e}
+    {if (<= e s)
+        {nil}
+        {do (print "fib" s ": " (fib s)) (cal (+ s 1) e)}
+    }
+)
+(cal 1 25)
