@@ -47,10 +47,12 @@ tasks:
 
   plugin:build:time:
     cmds:
+      - xxd -n time_script -i ./plugins/time.lzp > ./plugins/time.h
       - gcc -shared -O3 -o ./plugins/time.lpp ./plugins/time.c ./lzp_core.c ./mpc.c
     sources:
       - ./plugins/time.lpp
       - lzp_core.c
       - mpc.c
+      - time.lzp
     generates:
       - ./plugins/time.lpp

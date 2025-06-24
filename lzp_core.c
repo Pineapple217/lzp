@@ -21,6 +21,16 @@ char* ltype_name(enum lval_type t) {
   }
 }
 
+mpc_parser_t* Number;
+mpc_parser_t* Float;
+mpc_parser_t* Symbol;
+mpc_parser_t* String;
+mpc_parser_t* Comment;
+mpc_parser_t* Sexpr;
+mpc_parser_t* Qexpr;
+mpc_parser_t* Expr;
+mpc_parser_t* Lzp;
+
 // LVAL
 
 lval* lval_num(long long x) {
@@ -601,4 +611,76 @@ lval* builtin_eval(lenv* e, lval* a) {
 lval* builtin_list(lenv* e, lval* a) {
     a->type = LVAL_QEXPR;
     return a;
+}
+
+lval* builtin_read(lenv* e, lval* a) {
+    LASSERT_NUM("read", a, 1);
+    LASSERT_TYPE("read", a, 0, LVAL_STR);
+
+    mpc_result_t r;
+    
+    if (mpc_parse("<string>", a->cell[0]->data.str, Lzp, &r)) {
+        lval* expr = lval_read(r.output);
+        mpc_ast_delete(r.output);
+
+        while (expr->count) {
+            lval* x = lval_eval(e, lval_pop(expr, 0));
+
+            if (x->type == LVAL_ERR) {
+                lval_println(e, x);
+            }
+            lval_del(x);
+        }
+
+        lval_del(expr);
+        lval_del(a);
+
+        return lval_sexpr();
+    } else {
+        char* err_msg = mpc_err_string(r.error);
+        mpc_err_delete(r.error);
+
+        lval* err = lval_err("Could not load Library %s", err_msg);
+        free(err_msg);
+        lval_del(a);
+
+        return err;
+    }
+}
+
+void read_xxd(lenv* e, const unsigned char* xxd_arr, unsigned int xxd_arr_len) {
+    char* string_p = malloc(xxd_arr_len + 1);
+    memcpy(string_p, xxd_arr, xxd_arr_len);
+    string_p[xxd_arr_len] = '\0';
+
+
+    lval* l = lval_sexpr();
+    lval_add(l, lval_str(string_p));
+    free(string_p);
+    builtin_read(e, l);
+}
+
+void init_parser() {
+    Number = mpc_new("number");
+    Float = mpc_new("float");
+    Symbol = mpc_new("symbol");
+    String = mpc_new("string");
+    Comment = mpc_new("comment");
+    Sexpr = mpc_new("sexpr");
+    Qexpr = mpc_new("qexpr");
+    Expr = mpc_new("expr");
+    Lzp = mpc_new("lzp");
+
+    mpca_lang(MPCA_LANG_DEFAULT,
+        "                                                            \
+        number: /-?[0-9]+/ ;                                         \
+        float: /-?[0-9]*[.][0-9]+/ ;                                 \
+        symbol : /[a-zA-Z0-9_+\\-*\\/\\\\=<>%!&\\|]+/ ;              \
+        string: /\"(\\\\.|[^\"])*\"/ ;                               \
+        comment : /;[^\\r\\n]*/ ;                                    \
+        sexpr:  '(' <expr>* ')' ;                                    \
+        qexpr:  '{' <expr>* '}' ;                                    \
+        expr:   <float>| <number> | <symbol> | <string> | <comment> | <sexpr> | <qexpr> ; \
+        lzp:    /^/ <expr>* /$/  ;                          \
+    ", Number, Float, Symbol, String, Comment, Sexpr, Qexpr, Expr, Lzp);
 }

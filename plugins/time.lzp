@@ -1,0 +1,6 @@
+(fun {timing f} {
+    do 
+        (= {start} (time-milli()))
+        (eval f)
+        (- (time-milli()) start)
+})

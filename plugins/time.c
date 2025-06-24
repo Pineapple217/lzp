@@ -1,5 +1,6 @@
 #include "../lzp_core.h"
 #include "../mpc.h"
+#include "time.h"
 
 #ifdef _WIN32
 #define EXPORT __declspec(dllexport)
@@ -55,6 +56,9 @@ lval* builtin_time(lenv* e, lval* a) {
 }
 
 void lzp_plugin_init(lenv* env) {
+    init_parser();
     lenv_add_builtin(env, "time", builtin_time);
     lenv_add_builtin(env, "time-milli", builtin_time_milli);
+
+    read_xxd(env, time_script, time_script_len);
 }

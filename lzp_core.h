@@ -121,5 +121,9 @@ lval* lval_call(lenv* e, lval* f, lval* a);
 
 lval* builtin_eval(lenv* e, lval* a);
 lval* builtin_list(lenv* e, lval* a);
+lval* builtin_read(lenv* e, lval* a);
+
+void read_xxd(lenv* e, const unsigned char* xxd_arr, unsigned int xxd_arr_len);
+void init_parser();
 
 #endif
