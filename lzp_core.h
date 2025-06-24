@@ -56,7 +56,7 @@ enum lval_type {
 struct lval {
     enum lval_type type;
     union {
-        long num;
+        long long num;
         double flt;
         char* err;
         char* sym;
@@ -81,7 +81,7 @@ struct lenv {
 
 char* ltype_name(enum lval_type t);
 
-lval* lval_num(long x);
+lval* lval_num(long long x);
 lval* lval_flt(double x);
 lval* lval_err(char* fmt, ...);
 lval* lval_sym(char* s);

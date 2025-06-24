@@ -23,7 +23,7 @@ char* ltype_name(enum lval_type t) {
 
 // LVAL
 
-lval* lval_num(long x) {
+lval* lval_num(long long x) {
     lval *v = malloc(sizeof(lval));
     v->type = LVAL_NUM;
     v->data.num = x;
@@ -253,7 +253,7 @@ int lval_eq(lval* x, lval* y) {
 
 lval* lval_read_num(mpc_ast_t* t) {
     errno = 0;
-    long x = strtol(t->contents, NULL, 10);
+    long long x = strtoll(t->contents, NULL, 10);
     if (errno == ERANGE) {
         return lval_err("invalid number");
     }
@@ -343,7 +343,7 @@ void lval_print_str(lval* v) {
 void lval_print(lenv* e, lval* v) {
     switch (v->type) {
         case LVAL_NUM:
-            printf("%li", v->data.num); break;
+            printf("%lli", v->data.num); break;
         case LVAL_FLT:
             printf("%.15g", v->data.flt); break;
         case LVAL_ERR:
