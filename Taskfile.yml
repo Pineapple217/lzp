@@ -1,8 +1,6 @@
 version: "3"
 
 vars:
-  LZP_SOURCES: lzp.c mpc.c lzp_core.c
-  LZP_HEADERS: prelude.h
   BINARY_NAME:
     sh: |
       if [ "{{OS}}" = "windows" ]; then
@@ -15,12 +13,15 @@ tasks:
   build:
     deps: [generate-header]
     cmds:
-      - gcc -O3 {{.LZP_SOURCES}} -o {{.BINARY_NAME}} -Wl,--stack,16777216
+      - gcc -O3 lzp.c mpc.c lzp_core.c -o {{.BINARY_NAME}} -Wl,--stack,16777216
     sources:
-      - "{{.LZP_HEADERS}}"
-      - "{{.LZP_SOURCES}}"
+      - prelude.h
+      - lzp.c
+      - mpc.c
+      - lzp_core.h
+      - lzp_core.c
     generates:
-      - "{{.BINARY_NAME}}"
+      - "{{ .BINARY_NAME }}"
 
   generate-header:
     cmds:
@@ -39,3 +40,17 @@ tasks:
     deps: [build]
     cmds:
       - ./{{.BINARY_NAME}} -n ./tests/builtin.lzp
+
+  plugin:build:all:
+    deps:
+      - plugin:build:time
+
+  plugin:build:time:
+    cmds:
+      - gcc -shared -O3 -o ./plugins/time.lpp ./plugins/time.c ./lzp_core.c ./mpc.c
+    sources:
+      - ./plugins/time.lpp
+      - lzp_core.c
+      - mpc.c
+    generates:
+      - ./plugins/time.lpp

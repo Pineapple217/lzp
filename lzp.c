@@ -687,23 +687,54 @@ lval* builtin_plugin(lenv* e, lval* a) {
     LASSERT_NUM("plugin", a, 1);
     LASSERT_TYPE("plugin", a, 0, LVAL_STR);
 
-    char* path = a->cell[0]->data.str;
+    char* input_path = a->cell[0]->data.str;
+    char full_path[2024];
+
+    int has_path = (strchr(input_path, '/') != NULL) || (strchr(input_path, '\\') != NULL);
+
+    char temp_path[PATH_MAX];
+
+    if (!has_path) {
+        char* plugin_dir = getenv("LZP_PLUGIN_PATH");
+        if (!plugin_dir) {
+            lval_del(a);
+            return lval_err("No plugin path specified and plugin filename is not a full path: %s", input_path);
+        }
+        snprintf(temp_path, sizeof(temp_path), "%s/%s", plugin_dir, input_path);
+    } else {
+        strncpy(temp_path, input_path, sizeof(temp_path));
+        temp_path[sizeof(temp_path) - 1] = '\0';
+    }
+
+    char* last_slash1 = strrchr(temp_path, '/');
+    char* last_slash2 = strrchr(temp_path, '\\');
+    char* last_slash = last_slash1 > last_slash2 ? last_slash1 : last_slash2;
+
+    char* filename_part = last_slash ? last_slash + 1 : temp_path;
+    char* dot = strrchr(filename_part, '.');
+
+    if (!dot) {
+        snprintf(full_path, sizeof(full_path), "%s.lpp", temp_path);
+    } else {
+        strncpy(full_path, temp_path, sizeof(full_path));
+        full_path[sizeof(full_path) - 1] = '\0';
+    }
 
 #ifdef _WIN32
-    HMODULE lib = LoadLibraryA(path);
+    HMODULE lib = LoadLibraryA(full_path);
     if (!lib) {
         lval_del(a);
-        return lval_err("Could not load plugin DLL: %s", path);
+        return lval_err("Could not load plugin DLL: %s", full_path);
     }
     FARPROC proc = GetProcAddress(lib, "lzp_plugin_init");
     if (!proc) {
         lval_del(a);
-        return lval_err("Plugin does not export lzp_plugin_init: %s", path);
+        return lval_err("Plugin does not export lzp_plugin_init: %s", full_path);
     }
     lzp_plugin_init_fn init = (lzp_plugin_init_fn)proc;
     init(e);
 #else
-    void* lib = dlopen(path, RTLD_NOW);
+    void* lib = dlopen(full_path, RTLD_NOW);
     if (!lib) {
         lval_del(a);
         return lval_err("Could not load plugin shared object: %s", dlerror());
