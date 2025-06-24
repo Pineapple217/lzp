@@ -1,0 +1,41 @@
+version: "3"
+
+vars:
+  LZP_SOURCES: lzp.c mpc.c lzp_core.c
+  LZP_HEADERS: prelude.h
+  BINARY_NAME:
+    sh: |
+      if [ "{{OS}}" = "windows" ]; then
+        echo "lzp.exe"
+      else
+        echo "lzp"
+      fi
+
+tasks:
+  build:
+    deps: [generate-header]
+    cmds:
+      - gcc -O3 {{.LZP_SOURCES}} -o {{.BINARY_NAME}} -Wl,--stack,16777216
+    sources:
+      - "{{.LZP_HEADERS}}"
+      - "{{.LZP_SOURCES}}"
+    generates:
+      - "{{.BINARY_NAME}}"
+
+  generate-header:
+    cmds:
+      - xxd -i prelude.lzp > prelude.h
+    sources:
+      - prelude.lzp
+    generates:
+      - prelude.h
+
+  run:
+    deps: [build]
+    cmds:
+      - ./{{.BINARY_NAME}}
+
+  test:
+    deps: [build]
+    cmds:
+      - ./{{.BINARY_NAME}} -n ./tests/builtin.lzp
