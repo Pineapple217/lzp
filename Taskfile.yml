@@ -13,7 +13,12 @@ tasks:
   build:
     deps: [generate-header]
     cmds:
-      - gcc -O3 lzp.c mpc.c lzp_core.c -o {{.BINARY_NAME}} -Wl,--stack,16777216
+      - |
+        {{- if eq OS "windows" -}}
+        gcc -O3 lzp.c mpc.c lzp_core.c -o {{.BINARY_NAME}} -Wl,--stack,16777216
+        {{- else -}}
+        gcc -O3 lzp.c mpc.c lzp_core.c -o {{.BINARY_NAME}} -lm -lreadline
+        {{- end -}}
     sources:
       - prelude.h
       - lzp.c
@@ -48,7 +53,12 @@ tasks:
   plugin:build:time:
     cmds:
       - xxd -n time_script -i ./plugins/time.lzp > ./plugins/time.h
-      - gcc -shared -O3 -o ./plugins/time.lpp ./plugins/time.c ./lzp_core.c ./mpc.c
+      - |
+        {{- if eq OS "windows" -}}
+        gcc -shared -O3 -o ./plugins/time.lpp ./plugins/time.c ./lzp_core.c ./mpc.c
+        {{- else -}}
+        gcc -fPIC -shared -O3 -o ./plugins/time.lpp ./plugins/time.c ./lzp_core.c ./mpc.c
+        {{- end -}}
     sources:
       - ./plugins/time.lpp
       - lzp_core.c

@@ -618,7 +618,7 @@ lval* builtin_print(lenv* e, lval* a) {
 lval* builtin_show(lenv* e, lval* a) {
     for (int i = 0; i < a->count; i++) {
         LASSERT_TYPE("show", a, i, LVAL_STR);
-        printf(a->cell[i]->data.str);
+        printf("%s", a->cell[i]->data.str);
         putchar(' ');
     }
 
@@ -647,7 +647,7 @@ lval* builtin_plugin(lenv* e, lval* a) {
 
     int has_path = (strchr(input_path, '/') != NULL) || (strchr(input_path, '\\') != NULL);
 
-    char temp_path[PATH_MAX];
+    char temp_path[2024];
 
     if (!has_path) {
         char* plugin_dir = getenv("LZP_PLUGIN_PATH");
@@ -669,7 +669,7 @@ lval* builtin_plugin(lenv* e, lval* a) {
     char* dot = strrchr(filename_part, '.');
 
     if (!dot) {
-        snprintf(full_path, sizeof(full_path), "%s.lpp", temp_path);
+        snprintf(full_path, sizeof(full_path), "%.*s.lpp", (int)(sizeof(full_path) - 5), temp_path);
     } else {
         strncpy(full_path, temp_path, sizeof(full_path));
         full_path[sizeof(full_path) - 1] = '\0';
