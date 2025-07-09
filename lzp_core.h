@@ -100,6 +100,8 @@ int lval_eq(lval* x, lval* y);
 lval* lval_read(mpc_ast_t* t);
 void lval_print(lenv* e, lval* v);
 void lval_println(lenv* e, lval* v);
+char* lval_expr_to_string(lenv* e, lval* v, char open, char close);
+char* lval_string(lenv* e, lval* v);
 
 lval* lval_eval_sexpr(lenv* e, lval* v);
 

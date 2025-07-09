@@ -8,7 +8,17 @@
 (fun {cal s e}
     {if (<= e s)
         {nil}
-        {do (print "fib" s ": " (fib s)) (cal (+ s 1) e)}
+        {do 
+            (show 
+                (join 
+                    "fib "
+                    (str s)
+                    ": "
+                    (str (fib s))
+                )
+            )
+            (cal (+ s 1) e)
+        }
     }
 )
 (cal 1 25)

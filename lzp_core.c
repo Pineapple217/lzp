@@ -342,43 +342,94 @@ void lval_expr_print(lenv* e, lval* v, char open, char close) {
     putchar(close);
 }
 
-void lval_print_str(lval* v) {
-    char* esc = malloc(strlen(v->data.str) + 1);
-    strcpy(esc, v->data.str);
-    esc = mpcf_escape(esc);
-    printf("\"%s\"", esc);
-    free(esc);
+char* lval_expr_to_string(lenv* e, lval* v, char open, char close) {
+    char* buffer = malloc(2048);
+    if (!buffer) return NULL;
+    buffer[0] = '\0';
+
+    char temp[2] = {open, '\0'};
+    strcat(buffer, temp);
+
+    for (int i = 0; i < v->count; i++) {
+        char* elem_str = lval_string(e, v->cell[i]);
+        if (!elem_str) continue;
+
+        strcat(buffer, elem_str);
+        free(elem_str);
+
+        if (i != (v->count - 1)) {
+            strcat(buffer, " ");
+        }
+    }
+
+    temp[0] = close;
+    strcat(buffer, temp);
+
+    return buffer;
 }
 
 void lval_print(lenv* e, lval* v) {
+    char* str = lval_string(e, v);
+    printf("%s", str);
+    free(str);
+}
+
+char* lval_string(lenv* e, lval* v) {
+    char* buffer = malloc(2048);
+    if (!buffer) return NULL;
+    buffer[0] = '\0';
+    char temp[2048];
+
     switch (v->type) {
         case LVAL_NUM:
-            printf("%lli", v->data.num); break;
+            snprintf(temp, sizeof(temp), "%lli", v->data.num);
+            strcat(buffer, temp);
+            break;
         case LVAL_FLT:
-            printf("%.15g", v->data.flt); break;
+            snprintf(temp, sizeof(temp), "%.15g", v->data.flt);
+            strcat(buffer, temp);
+            break;
         case LVAL_ERR:
-            printf("Error: %s", v->data.err); break;
+            snprintf(temp, sizeof(temp), "Error: %s", v->data.err);
+            strcat(buffer, temp);
+            break;
         case LVAL_SYM:
-            printf("%s", v->data.sym); break;
-        case LVAL_STR:
-            lval_print_str(v); break;
+            strcat(buffer, v->data.sym);
+            break;
+        case LVAL_STR: 
+            snprintf(temp, sizeof(temp), "\"%s\"", v->data.str);
+            strcat(buffer, temp);
+            break;
         case LVAL_FUN:
             if (v->data.builtin) {
                 lval* x = lenv_fetch_symbol(e, v);
-                printf("<%s>", x->data.sym);
+                snprintf(temp, sizeof(temp), "<%s>", x->data.sym);
+                strcat(buffer, temp);
             } else {
-                printf("(\\ ");
-                lval_print(e, v->formals);
-                putchar(' ');
-                lval_print(e, v->body);
-                putchar(')');
+                strcat(buffer, "(\\ ");
+                char* formals_str = lval_string(e, v->formals);
+                strcat(buffer, formals_str);
+                free(formals_str);
+                strcat(buffer, " ");
+                char* body_str = lval_string(e, v->body);
+                strcat(buffer, body_str);
+                free(body_str);
+                strcat(buffer, ")");
             }
             break;
         case LVAL_SEXPR:
-            lval_expr_print(e, v, '(', ')'); break;
+            char* sexpr = lval_expr_to_string(e, v, '(', ')');
+            strcat(buffer, sexpr);
+            free(sexpr);
+            break;
         case LVAL_QEXPR:
-            lval_expr_print(e, v, '{', '}'); break;
+            char* qexpr = lval_expr_to_string(e, v, '{', '}');
+            strcat(buffer, qexpr);
+            free(qexpr);
+            break;
     }
+
+    return buffer;
 }
 
 void lval_println(lenv* e, lval* v) {
