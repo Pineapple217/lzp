@@ -119,3 +119,12 @@
     {error (join "asserting failed: " err)}
     {nil}
 })
+
+; Range
+(fun {range start end step} {
+  if (== (- start end) 0)
+    {nil}
+    {join (list start)
+      (range (+ start step) end step) 
+    }
+})
